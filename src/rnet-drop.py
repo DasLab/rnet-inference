@@ -11,7 +11,7 @@ import torch
 sys.path.append(path.join(path.dirname(__file__), '../RibonanzaNet'))
 from Network import *
 
-from .utils import RNA_Dataset
+from utils import RNA_Dataset
 
 USE_GPU = torch.cuda.is_available()
 

@@ -11,7 +11,7 @@ import torch
 sys.path.append(path.join(path.dirname(__file__), '../RibonanzaNet'))
 from Network import *
 
-from .utils import RNA_Dataset, load_config_from_yaml
+from utils import RNA_Dataset, load_config_from_yaml
 
 USE_GPU = torch.cuda.is_available()
 
@@ -65,11 +65,11 @@ if __name__ == '__main__':
                 pred = pred.cpu()
             test_preds.append(pred.numpy())
 
-    reactivity = test_preds[0][:,0]
-    deg_Mg_pH10 = test_preds[0][:,1]
-    deg_pH10 = test_preds[0][:,2]
-    deg_Mg_50C = test_preds[0][:,3]
-    deg_50C = test_preds[0][:,4]
+    reactivity = test_preds[0][0,:,0]
+    deg_Mg_pH10 = test_preds[0][0,:,1]
+    deg_pH10 = test_preds[0][0,:,2]
+    deg_Mg_50C = test_preds[0][0,:,3]
+    deg_50C = test_preds[0][0,:,4]
 
     print('reactivity:' + ','.join(str(x) for x in reactivity.tolist()))
     print('deg_Mg_pH10:' +','.join(str(x) for x in deg_Mg_pH10.tolist()))
