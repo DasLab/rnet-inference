@@ -7,15 +7,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import torch
-
-sys.path.append(path.join(path.dirname(__file__), '../RibonanzaNet'))
-from Network import *
-
-from utils import RNA_Dataset
+from torch import nn
+from utils import FinetunableRibonanzaNet, RNA_Dataset, load_config_from_yaml, Config
 
 USE_GPU = torch.cuda.is_available()
 
-class finetuned_RibonanzaNet(RibonanzaNet):
+class finetuned_RibonanzaNet(nn.Module):
     """
     Add a final dense layer to RibonanzaNet in order to predict the number of reads 
     during chemical mapping experiments. 
@@ -27,9 +24,9 @@ class finetuned_RibonanzaNet(RibonanzaNet):
         chemical mapping experiments. In Ribonanza, this is equal to 2, corresponding 
         to the 2A3 and DMS experiments. 
     """
-    def __init__(self, out_size :int) -> None:
+    def __init__(self, out_size :int, config: Config) -> None:
         super().__init__()
-        self.model = RibonanzaNet()
+        self.model = FinetunableRibonanzaNet(config)
         self.head = nn.Linear(256, out_size)
         
         
@@ -50,7 +47,7 @@ class finetuned_RibonanzaNet(RibonanzaNet):
             mapping experiment. 
         """
         # compute the RibonanzaNet embeddings
-        embeddings = self.model(x)
+        embeddings, _ = self.model(x, torch.ones_like(x).long().to(x.device))
         # pass through the dense head and take the mean over the sequence dimension
         y = torch.mean(
             self.head(embeddings),
@@ -59,7 +56,7 @@ class finetuned_RibonanzaNet(RibonanzaNet):
         # pass through a nonlinearity to return positive values
         return torch.exp(y)
 
-model = RibonanzaNetDrop(out_size = 2)
+model = finetuned_RibonanzaNet(out_size = 2, config = load_config_from_yaml(path.join(path.dirname(__file__), '../RibonanzaNet', 'configs/pairwise.yaml')))
 if USE_GPU:
     model = model.cuda()
 state_dict = torch.load(path.join(path.dirname(__file__), '../RibonanzaNet-Weights', 'RibonanzaNet-Drop.pt'), map_location='cpu')
@@ -88,8 +85,8 @@ if __name__ == '__main__':
                 pred = pred.cpu()
             test_preds.append(pred.numpy())
 
-    pred_2a3 = test_preds[0]
-    pred_dms = test_preds[1]
+    pred_2a3 = test_preds[0][0,0]
+    pred_dms = test_preds[0][0,1]
 
     print(f'2a3:{pred_2a3}')
     print(f'dms:{pred_dms}')

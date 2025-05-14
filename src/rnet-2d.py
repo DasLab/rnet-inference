@@ -7,15 +7,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import torch
-
-sys.path.append(path.join(path.dirname(__file__), '../RibonanzaNet'))
-from Network import *
-
-from utils import RNA_Dataset, load_config_from_yaml
+from torch import nn
+from utils import FinetunableRibonanzaNet, RNA_Dataset, load_config_from_yaml
 
 USE_GPU = torch.cuda.is_available()
 
-class finetuned_RibonanzaNet(RibonanzaNet):
+class finetuned_RibonanzaNet(FinetunableRibonanzaNet):
     def __init__(self, config):
         config.dropout=0.3
         super(finetuned_RibonanzaNet, self).__init__(config)
@@ -24,29 +21,11 @@ class finetuned_RibonanzaNet(RibonanzaNet):
         self.ct_predictor=nn.Linear(64,1)
 
     def forward(self,src):
-        
-        #with torch.no_grad():
-        _, pairwise_features=self.get_embeddings(src, torch.ones_like(src).long().to(src.device))
-
+        _, pairwise_features=super(finetuned_RibonanzaNet, self).forward(src, torch.ones_like(src).long().to(src.device))
         pairwise_features=pairwise_features+pairwise_features.permute(0,2,1,3) #symmetrize
-
         output=self.ct_predictor(self.dropout(pairwise_features)) #predict
 
         return output.squeeze(-1)
-
-    def get_embeddings(self, src,src_mask=None,return_aw=False):
-        B,L=src.shape
-        src = src
-        src = self.encoder(src).reshape(B,L,-1)
-        
-        pairwise_features=self.outer_product_mean(src)
-        pairwise_features=pairwise_features+self.pos_encoder(src)
-
-        attention_weights=[]
-        for i,layer in enumerate(self.transformer_encoder):
-            src,pairwise_features=layer(src, pairwise_features, src_mask,return_aw=return_aw)
-
-        return src, pairwise_features
 
 model = finetuned_RibonanzaNet(load_config_from_yaml(path.join(path.dirname(__file__), '../RibonanzaNet', 'configs/pairwise.yaml')))
 if USE_GPU:
