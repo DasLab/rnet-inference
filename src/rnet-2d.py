@@ -7,45 +7,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import torch
-from torch.utils.data import Dataset, DataLoader
+
+sys.path.append(path.join(path.dirname(__file__), '../RibonanzaNet'))
+from Network import *
+
+from .utils import RNA_Dataset, load_config_from_yaml
 
 USE_GPU = torch.cuda.is_available()
-
-class RNA_Dataset(Dataset):
-    def __init__(self,data):
-        self.data=data
-        self.tokens={nt:i for i,nt in enumerate('ACGU')}
-
-    def __len__(self):
-        return len(self.data)
-    
-    def __getitem__(self, idx):
-        sequence=[self.tokens[nt] for nt in self.data.loc[idx,'sequence']]
-        sequence=np.array(sequence)
-        sequence=torch.tensor(sequence)
-
-        return {'sequence':sequence}
-
-seq = sys.argv[1]
-test_dataset=RNA_Dataset(pd.DataFrame([{'sequence': seq}]))
-
-sys.path.append(sys.path.append(os.environ['RIBONANZANET_PATH']))
-
-from Network import *
-import yaml
-
-class Config:
-    def __init__(self, **entries):
-        self.__dict__.update(entries)
-        self.entries=entries
-
-    def print(self):
-        print(self.entries)
-
-def load_config_from_yaml(file_path):
-    with open(file_path, 'r') as file:
-        config = yaml.safe_load(file)
-    return Config(**config)
 
 class finetuned_RibonanzaNet(RibonanzaNet):
     def __init__(self, config):
@@ -80,52 +48,56 @@ class finetuned_RibonanzaNet(RibonanzaNet):
 
         return src, pairwise_features
 
-model = finetuned_RibonanzaNet(load_config_from_yaml(path.join(os.environ['RIBONANZANET_PATH'], 'configs/pairwise.yaml')))
+model = finetuned_RibonanzaNet(load_config_from_yaml(path.join(path.dirname(__file__), '../RibonanzaNet', 'configs/pairwise.yaml')))
 if USE_GPU:
     model = model.cuda()
-model.load_state_dict(torch.load(path.join(os.environ['RIBONANZANET_WEIGHTS_PATH'], 'RibonanzaNet-SS.pt'), map_location='cpu'))
-
-from tqdm import tqdm
-
-test_preds=[]
+model.load_state_dict(torch.load(path.join(path.dirname(__file__), '../RibonanzaNet-Weights', 'RibonanzaNet-SS.pt'), map_location='cpu'))
 model.eval()
-for i in tqdm(range(len(test_dataset))):
-    example=test_dataset[i]
-    sequence=example['sequence']
-    if USE_GPU:
-        sequence = sequence.cuda()
-    sequence = sequence.unsqueeze(0)
 
-    with torch.no_grad():
-        pred = model(sequence).sigmoid()
+if __name__ == '__main__':
+    from tqdm import tqdm
+
+    seq = sys.argv[1]
+    test_dataset=RNA_Dataset(pd.DataFrame([{'sequence': seq}]))
+
+    test_preds=[]
+    for i in tqdm(range(len(test_dataset))):
+        example=test_dataset[i]
+        sequence=example['sequence']
         if USE_GPU:
-            pred = pred.cpu()
-        test_preds.append(pred.numpy())
+            sequence = sequence.cuda()
+        sequence = sequence.unsqueeze(0)
 
-# create dummy arnie config
-os.environ['NUPACKHOME'] = '/tmp'
-from arnie.pk_predictors import _hungarian
+        with torch.no_grad():
+            pred = model(sequence).sigmoid()
+            if USE_GPU:
+                pred = pred.cpu()
+            test_preds.append(pred.numpy())
 
-def mask_diagonal(matrix, mask_value=0):
-    matrix=matrix.copy()
-    n = len(matrix)
-    for i in range(n):
-        for j in range(n):
-            if abs(i - j) < 4:
-                matrix[i][j] = mask_value
-    return matrix
+    # create dummy arnie config
+    os.environ['NUPACKHOME'] = '/tmp'
+    from arnie.pk_predictors import _hungarian
 
-test_preds_hungarian=[]
-hungarian_structures=[]
-hungarian_bps=[]
-for i in range(len(test_preds)):
-    s,bp=_hungarian(mask_diagonal(test_preds[i][0]),theta=0.5,min_len_helix=1) #best theta based on val is 0.5
-    hungarian_bps.append(bp)
-    ct_matrix=np.zeros((len(s),len(s)))
-    for b in bp:
-        ct_matrix[b[0],b[1]]=1
-    ct_matrix=ct_matrix+ct_matrix.T
-    test_preds_hungarian.append(ct_matrix)
-    hungarian_structures.append(s)
+    def mask_diagonal(matrix, mask_value=0):
+        matrix=matrix.copy()
+        n = len(matrix)
+        for i in range(n):
+            for j in range(n):
+                if abs(i - j) < 4:
+                    matrix[i][j] = mask_value
+        return matrix
 
-print('structure:' + hungarian_structures[0])
+    test_preds_hungarian=[]
+    hungarian_structures=[]
+    hungarian_bps=[]
+    for i in range(len(test_preds)):
+        s,bp=_hungarian(mask_diagonal(test_preds[i][0]),theta=0.5,min_len_helix=1) #best theta based on val is 0.5
+        hungarian_bps.append(bp)
+        ct_matrix=np.zeros((len(s),len(s)))
+        for b in bp:
+            ct_matrix[b[0],b[1]]=1
+        ct_matrix=ct_matrix+ct_matrix.T
+        test_preds_hungarian.append(ct_matrix)
+        hungarian_structures.append(s)
+
+    print('structure:' + hungarian_structures[0])
