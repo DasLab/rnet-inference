@@ -7,10 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import torch
-
 sys.path.append(path.join(path.dirname(__file__), '../RibonanzaNet'))
-from Network import *
-
+from Network import RibonanzaNet
 from utils import RNA_Dataset, load_config_from_yaml
 
 USE_GPU = torch.cuda.is_available()
