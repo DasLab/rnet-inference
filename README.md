@@ -3,7 +3,7 @@ Self-contained, automatable inference for the RibonanzaNet series of models
 
 ## Setup
 * Install conda
-* Clone this repository (make sure to use `--recursive`, or after cloning run `git submodule init` followed by `git submodule update`)
+* Clone this repository (make sure to use `--recursive`, or after cloning run `git submodule update --init`)
 * `conda env create -f RibonanzaNet/env.yml -p .venv`
 * `.venv/bin/pip install -r requirements.txt`
 
