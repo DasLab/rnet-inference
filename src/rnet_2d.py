@@ -39,7 +39,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(dest='sequence', help='Sequence to predict')
     parser.add_argument('--batch-size', type=int, dest='batch_size', help='batch size (number of predictions to run simultaniously - requires more memory, but allows for increased parallelization)', default=1)
-    parser.add_argument('--output-confidence', action='store_true', dest='output_confidence', help='inclue pair confidence matrix in output')
+    parser.add_argument('--output-confidence', action='store_true', dest='output_pair_confidence', help='inclue pair confidence matrix in output')
     args = parser.parse_args()
     seq = args.sequence
     test_dataset=RNA_Dataset(pd.DataFrame([{'sequence': seq}]))
@@ -85,5 +85,5 @@ if __name__ == '__main__':
         hungarian_structures.append(s)
 
     print('structure:' + hungarian_structures[0])
-    if args.output_confidence:
+    if args.output_pair_confidence:
         print('pair_confidence:' + ','.join(str(x) for xs in test_preds[0][0].tolist() for x in xs))
