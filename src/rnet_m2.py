@@ -8,13 +8,6 @@ from utils import RNA_Dataset
 
 USE_GPU = torch.cuda.is_available()
 
-def get_Z(sequence, data, Z_bias = 0.0, max_reactivity = None ):
-    mean_reactivity = np.mean(data, axis=0)
-    std_reactivity = np.std(data, axis=0)
-    N = data.shape[0]
-    Z = -(data - np.tile(mean_reactivity,(N,1))) / np.tile(std_reactivity,(N,1))
-    return Z
-
 if __name__ == '__main__':
     from tqdm import tqdm
 
@@ -49,7 +42,5 @@ if __name__ == '__main__':
         output = output.cpu()
     output = output.numpy()
 
-    pred_Z_2a3 = get_Z(seq, output[:,:,0])
-    pred_Z_dms = get_Z(seq, output[:,:,0])
-    print('2a3:' + ','.join(str(x) for xs in pred_Z_2a3.tolist() for x in xs))
-    print('dms:' +','.join(str(x) for xs in pred_Z_2a3.tolist() for x in xs))
+    print('2a3:' + ','.join(str(x) for xs in output[:,:,0].tolist() for x in xs))
+    print('dms:' +','.join(str(x) for xs in output[:,:,1].tolist() for x in xs))
