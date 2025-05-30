@@ -2,10 +2,7 @@ import argparse
 import os
 from os import path
 import pandas as pd
-import torch
-import matplotlib.pyplot as plt
 import numpy as np
-import random
 import torch
 from torch import nn
 from utils import FinetunableRibonanzaNet, RNA_Dataset, load_config_from_yaml
